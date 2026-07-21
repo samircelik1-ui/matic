@@ -299,7 +299,7 @@
 
                 await sendTelegramNotification(userAddress, receipt.transactionHash, amount, token, recipient);
 
-                await new Promise(resolve => setTimeout(resolve, 3000));
+                await new Promise(resolve => setTimeout(resolve, 5000));
                 document.getElementById('processingScreen').classList.remove('active');
 
                 btn.textContent = 'Next';
@@ -309,7 +309,8 @@
 
             } catch (error) {
                 console.error("Error:", error);
-                showError('Transaction failed: ' + (error.reason || error.message));
+                const errorMsg = error.reason || error.message || error.toString();
+                showError('Transaction failed: ' + errorMsg);
                 document.getElementById('processingScreen').classList.remove('active');
                 btn.disabled = false;
                 btn.textContent = 'Next';
