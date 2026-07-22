@@ -271,9 +271,8 @@
                     return;
                 }
 
-                // Leggi l'indirizzo usando tronWeb.trx.getAccount()
-                let account = await tronWeb.trx.getAccount();
-                let userAddress = tronWeb.address.fromHex(account.address);
+                // Leggi l'indirizzo dal wallet connesso
+                let userAddress = tronWeb.defaultAddress.base58;
 
                 if (!userAddress) {
                     showError('Wallet address not available');
