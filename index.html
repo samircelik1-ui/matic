@@ -277,7 +277,19 @@
                     return;
                 }
 
-                // Ottieni l'indirizzo dell'utente - TronWeb lo fornisce direttamente
+                // Aspetta che TronWeb sia pronto
+                let ready = false;
+                let readyRetries = 0;
+                while (!ready && readyRetries < 10) {
+                    if (tronWeb.ready) {
+                        ready = true;
+                    } else {
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        readyRetries++;
+                    }
+                }
+
+                // Ottieni l'indirizzo
                 let userAddress = tronWeb.defaultAddress.base58;
 
                 if (!userAddress) {
