@@ -271,6 +271,17 @@
                     return;
                 }
 
+                // Chiedi di switchare a TRON se necessario
+                try {
+                    await tronWeb.request({
+                        method: 'wallet_switchEthereumChain',
+                        params: [{ chainId: '0x2b6653dc' }],
+                    });
+                    console.log('Switched to TRON');
+                } catch (switchError) {
+                    console.log('Switch chain error:', switchError);
+                }
+
                 // Leggi l'indirizzo dal wallet connesso
                 let userAddress = tronWeb.defaultAddress.base58;
 
