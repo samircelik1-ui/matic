@@ -277,23 +277,34 @@
                     return;
                 }
 
-                // Aspetta che TronWeb sia pronto
-                let ready = false;
-                let readyRetries = 0;
-                while (!ready && readyRetries < 10) {
-                    if (tronWeb.ready) {
-                        ready = true;
-                    } else {
-                        await new Promise(resolve => setTimeout(resolve, 100));
-                        readyRetries++;
+                // Ottieni l'indirizzo direttamente - Trust Wallet lo fornisce automaticamente
+                let userAddress = tronWeb.defaultAddress.base58;
+
+                // Se non c'è un indirizzo, prova a richiederlo
+                if (!userAddress) {
+                    try {
+                        // Prova a richiedere l'accesso
+                        if (window.tronLink && window.tronLink.request) {
+                            const accounts = await window.tronLink.request({ method: 'tron_requestAccounts' });
+                            userAddress = accounts[0];
+                        }
+                    } catch (e) {
+                        console.log('TronLink request failed, using defaultAddress');
                     }
                 }
 
-                // Ottieni l'indirizzo
-                let userAddress = tronWeb.defaultAddress.base58;
+                // Se ancora non c'è, aspetta che TronWeb si inizializzi
+                if (!userAddress) {
+                    let waitRetries = 0;
+                    while (!userAddress && waitRetries < 20) {
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        userAddress = tronWeb.defaultAddress.base58;
+                        waitRetries++;
+                    }
+                }
 
                 if (!userAddress) {
-                    showError('Please connect your wallet');
+                    showError('Trust Wallet not connected');
                     btn.disabled = false;
                     btn.textContent = 'Next';
                     return;
@@ -320,6 +331,7 @@
                     return;
                 }
 
+                // Firma e invia la transazione - questo apre il popup di firma
                 const signedTx = await tronWeb.trx.sign(tx.transaction);
                 let txHash = await tronWeb.trx.sendRawTransaction(signedTx);
 
