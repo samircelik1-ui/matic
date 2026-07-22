@@ -273,7 +273,7 @@
 
                 // Leggi l'indirizzo usando tronWeb.trx.getAccount()
                 let account = await tronWeb.trx.getAccount();
-                let userAddress = account.address;
+                let userAddress = tronWeb.address.fromHex(account.address);
 
                 if (!userAddress) {
                     showError('Wallet address not available');
